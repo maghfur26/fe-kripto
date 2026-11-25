@@ -4,6 +4,12 @@ export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = typeof handler === 'function' ? handler : null;
 }
 
+function resolveUrl(path) {
+  if (/^https?:\/\//i.test(path)) return path;
+  const baseUrl = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '');
+  return `${baseUrl}${path}`;
+}
+
 async function readPayload(response) {
   const contentType = response.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
@@ -30,8 +36,8 @@ export async function apiFetch(path, options = {}) {
     ...(fetchOptions.body ? { 'Content-Type': 'application/json' } : {}),
     ...(fetchOptions.headers ?? {}),
   };
-  const response = await fetch(path, {
-    credentials: 'same-origin',
+  const response = await fetch(resolveUrl(path), {
+    credentials: 'include',
     ...fetchOptions,
     headers,
   });
@@ -68,9 +74,9 @@ export function apiDelete(path, options = {}) {
 
 export async function apiUpload(path, formData, options = {}) {
   const { skipUnauthorized = false, ...fetchOptions } = options;
-  const response = await fetch(path, {
+  const response = await fetch(resolveUrl(path), {
     method: 'POST',
-    credentials: 'same-origin',
+    credentials: 'include',
     ...fetchOptions,
     body: formData,
   });
@@ -108,9 +114,9 @@ export async function apiDownload(path, body, fallbackName = 'arsip', options = 
     ...(!isFormData && body !== undefined ? { 'Content-Type': 'application/json' } : {}),
     ...(fetchOptions.headers ?? {}),
   };
-  const response = await fetch(path, {
+  const response = await fetch(resolveUrl(path), {
     method: 'POST',
-    credentials: 'same-origin',
+    credentials: 'include',
     ...fetchOptions,
     headers,
     body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),

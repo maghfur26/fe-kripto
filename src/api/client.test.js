@@ -1,7 +1,12 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiFetch, apiGet, apiPost, apiPatch, apiDelete, setUnauthorizedHandler } from './client.js';
 
+beforeEach(() => {
+  vi.stubEnv('VITE_API_BASE_URL', '');
+});
+
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
   setUnauthorizedHandler(null);
 });
@@ -16,7 +21,19 @@ describe('api client', () => {
     });
     const data = await apiGet('/api/test');
     expect(data).toEqual({ ok: true });
-    expect(global.fetch).toHaveBeenCalledWith('/api/test', expect.objectContaining({ credentials: 'same-origin' }));
+    expect(global.fetch).toHaveBeenCalledWith('/api/test', expect.objectContaining({ credentials: 'include' }));
+  });
+
+  it('prefixes relative paths with VITE_API_BASE_URL', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/');
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => ({ ok: true }),
+    });
+    await apiGet('/api/test');
+    expect(global.fetch).toHaveBeenCalledWith('https://api.example.com/api/test', expect.anything());
   });
 
   it('calls unauthorized handler on 401 and throws status', async () => {
